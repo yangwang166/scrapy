@@ -21,18 +21,19 @@ class QuotesSpider(Spider):
                           callback = self.scrape_home_page)
 
     def scrape_home_page(self, response):
-        if response.xpath('//a[text()="Logout"]'):
-            self.log('You logged in!')
+        print response.xpath('//*')
+        #if response.xpath('//a[text()="Logout"]'):
+        #    self.log('You logged in!')
 
-        l = ItemLoader(item = QuotesSpiderItem(), response = response)
+        #l = ItemLoader(item = QuotesSpiderItem(), response = response)
 
-        h1_tag = response.xpath('//h1/a/text()').extract_first()
-        tags = response.xpath('//*[@class="tag-item"]/a/text()').extract()
+        #h1_tag = response.xpath('//h1/a/text()').extract_first()
+        #tags = response.xpath('//*[@class="tag-item"]/a/text()').extract()
 
-        l.add_value('h1_tag', h1_tag)
-        l.add_value('tags', tags)
+        #l.add_value('h1_tag', h1_tag)
+        #l.add_value('tags', tags)
 
-        return l.load_item()
+        #return l.load_item()
 
         #yield {'H1 Tag': h1_tag, 'Tags': tags}
 
