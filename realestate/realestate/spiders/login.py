@@ -31,9 +31,13 @@ class LoginSpider(scrapy.Spider):
             if land_count > 0:
                 land_size = estate.xpath('div[3]/div/span/text()').extract()[1]
                 land_unit = estate.xpath('div[3]/div/span/text()').extract()[3]
+
+            detail_link = estate.xpath('../..//*[@class="details-link "]/@href').extract_first()
+            detail_link = response.urljoin(detail_link)
+            request = scrapy.Request(detail_link, callback=self.parse_details)
             
 
-            print price, address, property_type, bed, bath, car, land_size, land_unit
+            print price, address, property_type, bed, bath, car, land_size, land_unit, detail_link
 
         next_page = response.xpath('//*[@class="pagination__next"]/a/@href').extract_first()
 
@@ -41,3 +45,19 @@ class LoginSpider(scrapy.Spider):
             next_page = response.urljoin(next_page)
             yield scrapy.Request(next_page, callback=self.parse)
 
+    @staticmethod
+    def parse_details(response):
+        house = response.meta['item']
+        primary_content = response.css("div#detailsCont #primaryContent")
+        house['title'] = primary_content.css("p.title::text").extract_first()
+        house['description'] = primary_content.css("p.body::text").extract()
+        other_features = []
+        features = response.css("div#detailsCont #primaryContent #features div.featureList").css("ul li")
+        for li in features:
+            other1 = OtherFeatures()
+            other1['name'] = li.css("::text").extract_first()
+            other1['description'] = li.css("span::text").extract_first()
+            other_features.append(other1)
+
+        house['otherFeatures'] = other_features
+        yield house
