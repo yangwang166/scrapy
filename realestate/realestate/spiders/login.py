@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 import scrapy
+import requests
+import re
 
 class House(scrapy.Item):
     address = scrapy.Field()
@@ -13,15 +15,30 @@ class House(scrapy.Item):
     detail_link = scrapy.Field()
     statement_url = scrapy.Field()
 
+dbf = open("/home/willwywang/scrapy/project/realestate/db.csv", "a+")
+
 class LoginSpider(scrapy.Spider):
     name = 'login'
     allowed_domains = ['www.realestate.com.au']
-    start_urls = ['https://www.realestate.com.au/buy/in-vic/list-1']
+    #start_urls = ['https://www.realestate.com.au/buy/in-vic/list-1']
+    start_urls = ['https://www.realestate.com.au/buy/property-house-with-2-bedrooms-between-500000-2000000-in-vic/list-1']
 
     def parse(self, response):
+        #count = 0 
         for estate in response.xpath('//*[@class="residential-card__content"]'):
+            #count += 1
 
             house = House()
+
+            house['land_size'] = "null"
+            house['address'] = "null"
+            house['price'] = 0
+            house['bed'] = 0
+            house['bed'] = 0
+            house['carPark'] = 0
+            house['land_unit'] = "null"
+            house['detail_link'] = "null"
+            house['statement_url'] = "null"
 
             price = estate.xpath('div[1]/span/text()').extract_first()
             house['price'] = price
@@ -47,7 +64,7 @@ class LoginSpider(scrapy.Spider):
                 house['carPark'] = carPark
 
             land_count = len(estate.xpath('div[3]/div'))
-            land_size = 0
+            land_size = "null"
             land_unit = None
             if land_count > 0:
                 land_size = estate.xpath('div[3]/div/span/text()').extract()[1]
@@ -58,24 +75,75 @@ class LoginSpider(scrapy.Spider):
             detail_link = estate.xpath('../..//*[@class="details-link "]/@href').extract_first()
             detail_link = response.urljoin(detail_link)
             house['detail_link'] = detail_link
-            request = scrapy.Request(detail_link, callback=self.parse_details)
 
-            request.meta['item'] = house
-            yield request
+            req = scrapy.Request(detail_link, 
+                                    callback=self.parse_details)
+
+            req.meta['item'] = house
+            yield req
             
             #statement_url = house['statement_url']
-            #print price, address, property_type, bed, bath, carPark, land_size, land_unit, detail_link
+            #print count, price, address, property_type, bed, bath, carPark, land_size, land_unit, detail_link
 
         next_page = response.xpath('//*[@class="pagination__next"]/a/@href').extract_first()
 
         if next_page is not None:
             next_page = response.urljoin(next_page)
-            yield scrapy.Request(next_page, callback=self.parse)
+            yield scrapy.Request(next_page, 
+                                callback=self.parse)
 
-    @staticmethod
-    def parse_details(response):
+    def parse_details(self, response):
         house = response.meta['item']
         statement_url = response.xpath('//*[@class="statement-of-information__link"]/@href').extract_first() 
+
+
         if statement_url != None:
             house['statement_url'] = statement_url
+
+            #yield scrapy.Request(
+            #    statement_url,
+            #    callback=self.save_pdf)
+
+            resp = requests.get(statement_url, stream=True)
+            file_name = re.sub(r'\W+', '', house['address']+'_'+house['property_type']+'_'+str(house['bed'])+'_'+str(house['bath'])+'_'+str(house['carPark']))
+            path = '/home/willwywang/statement_pdf/' + file_name + '.pdf'
+            with open(path, 'wb') as fd:
+                fd.write(resp.content)
+            
+            if house['land_size'] is None:
+                house['land_size'] = "null"
+            if house['address'] is None:
+                house['address'] = "null"
+            if house['price'] is None:
+                house['price'] = 0
+            if house['bed'] is None:
+                house['bed'] = 0
+            if house['bath'] is None:
+                house['bed'] = 0
+            if house['carPark'] is None:
+                house['carPark'] = 0
+            if house['land_unit'] is None:
+                house['land_unit'] = "null"
+            if house['detail_link'] is None:
+                house['detail_link'] = "null"
+            if house['statement_url'] is None:
+                house['statement_url'] = "null"
+
+            address_new = house['address'].replace(",", " ")
+            price_new = house['price'].replace(",", "")
+            land_size_new = house['land_size'].replace(",", "")
+
+            aline = u'' + address_new + ',' + price_new + ',' + house['property_type'] + ',' + str(house['bed']) + ',' + str(house['bath']) + ',' + str(house['carPark']) + ',' + str(house['land_size']) + ',' + house['land_unit'] + ',' + house['detail_link'] + ',' + house['statement_url'] + ',' + file_name
+            aline = aline.encode('utf-8').strip()
+            dbf.write(aline + "\n")
+            dbf.flush()
+
         yield house
+
+    #def save_pdf(self, response):
+    #    print "Downloading pdf..."
+    #    house = response.meta['item']
+    #    path = '/tmp/' + house['address'] + '.pdf'
+    #    print path
+    #    with open(path, 'wb') as f:
+    #        f.write(response.body)
