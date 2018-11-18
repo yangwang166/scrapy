@@ -213,7 +213,7 @@ class LoginSpider(scrapy.Spider):
             price_new = house['price'].replace(",", "")
             land_size_new = house['land_size'].replace(",", "")
 
-            aline = u'' + address_new + ',' + price_new + ',' + house['property_type'] + ',' + str(house['bed']) + ',' + str(house['bath']) + ',' + str(house['carPark']) + ',' + str(house['land_size']) + ',' + house['land_unit'] + ',' + house['detail_link'] + ',' + house['statement_url'] + ',' + file_name
+            aline = u'' + address_new + ',' + price_new + ',' + house['property_type'] + ',' + str(house['bed']) + ',' + str(house['bath']) + ',' + str(house['carPark']) + ',' + land_size_new + ',' + house['land_unit'] + ',' + house['detail_link'] + ',' + house['statement_url'] + ',' + file_name
             aline = aline.encode('utf-8').strip()
             dbf.write(aline + "\n")
             dbf.flush()
